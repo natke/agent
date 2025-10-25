@@ -18,21 +18,25 @@ IList<AITool> tools = [
     AIFunctionFactory.Create(SendSms),
     AIFunctionFactory.Create(GetWeather)];
 
+AIAgent weatherAgent = new OpenAIClient(
+  new ApiKeyCredential(manager.ApiKey),
+  new OpenAIClientOptions { Endpoint = manager.Endpoint })
+    .GetChatClient(model?.ModelId ?? "qwen2.5-7b")
+    .CreateAIAgent(
+        instructions: "You answer questions about the weather.",
+        name: "WeatherAgent",
+        description: "An agent that answers questions about the weather.",
+        tools: [AIFunctionFactory.Create(GetWeather)]);
+
 AIAgent agent = new OpenAIClient(
   new ApiKeyCredential(manager.ApiKey),
   new OpenAIClientOptions { Endpoint = manager.Endpoint })
     .GetChatClient(model?.ModelId ?? "qwen2.5-7b")
-    .CreateAIAgent(instructions: "You are a helpful assistant with some tools.", tools: tools);
+    .CreateAIAgent(
+        instructions: "You are a helpful assistant who responds in French.",
+        tools: [weatherAgent.AsAIFunction()]);
 
-ChatMessage systemMessage = new(
-    ChatRole.System,
-    """
-    You are a helpful assistant with some tools
-    """);
-
-ChatMessage userMessage = new(ChatRole.User, "What is the weather like in Paris?");
-
-Console.WriteLine(await agent.RunAsync([systemMessage, userMessage]));
+Console.WriteLine(await agent.RunAsync("What is the weather like in Amsterdam?"));
 
 [Description("Get the weather for a given location.")]
 static string GetWeather([Description("The location to get the weather for.")] string location)
