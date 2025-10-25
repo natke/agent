@@ -1,13 +1,10 @@
-﻿using System;
+﻿using System.ComponentModel;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Agents.AI;
 using OpenAI;
 
 using System.ClientModel;
 using Microsoft.Extensions.AI;
-using Azure.Core.Diagnostics;
-using Microsoft.Extensions.Logging;
-using System.Diagnostics.Tracing;
 
 var alias = "qwen2.5-7b";
 
@@ -16,39 +13,36 @@ Console.WriteLine("Starting model...");
 var manager = await FoundryLocalManager.StartModelAsync(aliasOrModelId: alias);
 var model = await manager.GetModelInfoAsync(aliasOrModelId: alias);
 
-// Debug the manager and model details
-Console.WriteLine($"Manager endpoint: {manager.Endpoint}");
-Console.WriteLine($"Manager API key: {(string.IsNullOrEmpty(manager.ApiKey) ? "NOT SET" : "SET")}");
-Console.WriteLine($"Model info: {model?.ModelId}");
-
-Console.WriteLine($"Creating OpenAI client with endpoint: {manager.Endpoint}");
-Console.WriteLine($"Using model: {model?.ModelId}");
+IList<AITool> tools = [
+    AIFunctionFactory.Create(Reverse),
+    AIFunctionFactory.Create(SendSms),
+    AIFunctionFactory.Create(GetWeather)];
 
 AIAgent agent = new OpenAIClient(
   new ApiKeyCredential(manager.ApiKey),
   new OpenAIClientOptions { Endpoint = manager.Endpoint })
     .GetChatClient(model?.ModelId ?? "qwen2.5-7b")
-    .CreateAIAgent(instructions: "You are good at telling jokes.");
+    .CreateAIAgent(instructions: "You are a helpful assistant with some tools.", tools: tools);
 
-Console.WriteLine("Sending request to OpenAI API...");
+ChatMessage systemMessage = new(
+    ChatRole.System,
+    """
+    You are a helpful assistant with some tools
+    """);
 
-try
-{
-    var response = await agent.RunAsync("Tell me a joke about a pirate.");
-    
-    Console.WriteLine("Response received:");
-    Console.WriteLine(response);
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"Error occurred: {ex.Message}");
-    
-    if (ex.InnerException != null)
-    {
-        Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-    }
-    
-    // Print full exception details for debugging
-    Console.WriteLine($"Full exception: {ex}");
-}
+ChatMessage userMessage = new(ChatRole.User, "What is the weather like in Paris?");
+
+Console.WriteLine(await agent.RunAsync([systemMessage, userMessage]));
+
+[Description("Get the weather for a given location.")]
+static string GetWeather([Description("The location to get the weather for.")] string location)
+    => $"The weather in {location} is cloudy with a high of 15°C.";
+
+[Description("Given a phone number and a message send an SMS")]
+static string SendSms([Description("The message to send")] string message, [Description("The number to send it to")] string phoneNumber)
+    => $"SMS sent";
+
+[Description("Given a string, return the reverse of that string")]
+static string Reverse([Description("The string to be reversed")] string input)
+    => $"String reversed";
 
