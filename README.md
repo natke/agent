@@ -2,7 +2,7 @@
 
 This sample is adapted from the Microsoft Agent Framework [tutorial](https://learn.microsoft.com/en-us/agent-framework/tutorials/agents/agent-as-function-tool?pivots=programming-language-csharp).
 
-It uses the OpenAI Client instread of the AzureOpenAIClient. This is because the AzureOpenAIClient seems to a `v1/openai/deployments` to the chatcompletion endpoint and Foundry Local does not serve that endpoint.
+It uses the OpenAI Client instread of the AzureOpenAIClient. This is because the AzureOpenAIClient seems to add `openai/deployments` to the chatcompletion endpoint and Foundry Local does not serve that endpoint.
 
 ## Setup
 
