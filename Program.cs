@@ -1,10 +1,10 @@
 ﻿using System.ComponentModel;
-using Microsoft.AI.Foundry.Local;
-using Microsoft.Agents.AI;
-using OpenAI;
-
 using System.ClientModel;
+using OpenAI;
 using Microsoft.Extensions.AI;
+using Microsoft.Agents.AI;
+using Microsoft.AI.Foundry.Local;
+
 
 var alias = "qwen2.5-7b";
 
