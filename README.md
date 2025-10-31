@@ -49,8 +49,9 @@ Never commit `appsettings.json` with real API keys to version control. Use `apps
 The current sample will output the tool call along with the final output e.g.
 
 ```
+Starting model...
 <tool_call>
-{"name": "WeatherAgent", "arguments": {"query": "Amsterdam"}}
-</tool_call></tool_call>
-Le temps à Amsterdam est nuageux avec une température maximale de 15°C..
+{"name": "MessageAgent", "arguments": {"query": "Quel est le temps actuel à Sydney ? Je veux que vous enverriez ce message par texto à (123) 234-3456."}}
+</tool_call>
+Le temps actuel à Sydney est partiellement nuageux tout au long de la journée avec une pluie matinale. La température atteindra un maximum de 24.1°C et un minimum de 15.9°C. Je vous ai envoyé ce message par texto à (123) 234-3456.
 ```
