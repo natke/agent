@@ -6,6 +6,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Agents.AI;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 // Load configuration
 var configuration = new ConfigurationBuilder()
@@ -13,7 +14,21 @@ var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
 
+// Create logger factory for agent logging
+using var loggerFactory = LoggerFactory.Create(builder =>
+    builder.AddConsole().SetMinimumLevel(LogLevel.Trace));
+
 var alias = "qwen2.5-7b";
+
+ChatOptions options = new()
+{
+    ToolMode = ChatToolMode.RequireAny,
+};
+
+ChatClientAgentRunOptions runOptions = new()
+{
+    ChatOptions = options
+};
 
 Console.WriteLine("Starting model...");
 
@@ -28,7 +43,11 @@ IList<AITool> tools = [
 AIAgent weatherAgent = new OpenAIClient(
   new ApiKeyCredential(manager.ApiKey),
   new OpenAIClientOptions { Endpoint = manager.Endpoint })
-    .GetChatClient(model?.ModelId ?? "qwen2.5-7b")
+    .GetChatClient(model?.ModelId ?? alias)
+    .AsIChatClient()
+    .AsBuilder()
+    .UseLogging(loggerFactory)
+    .Build()
     .CreateAIAgent(
         instructions: "You answer questions about the weather.",
         name: "WeatherAgent",
@@ -38,7 +57,11 @@ AIAgent weatherAgent = new OpenAIClient(
 AIAgent messageAgent = new OpenAIClient(
   new ApiKeyCredential(manager.ApiKey),
   new OpenAIClientOptions { Endpoint = manager.Endpoint })
-    .GetChatClient(model?.ModelId ?? "qwen2.5-7b")
+    .GetChatClient(model?.ModelId ?? alias)
+    .AsIChatClient()
+    .AsBuilder()
+    .UseLogging(loggerFactory)
+    .Build()
     .CreateAIAgent(
         instructions: "You send text messages.",
         name: "MessageAgent",
@@ -48,12 +71,17 @@ AIAgent messageAgent = new OpenAIClient(
 AIAgent agent = new OpenAIClient(
   new ApiKeyCredential(manager.ApiKey),
   new OpenAIClientOptions { Endpoint = manager.Endpoint })
-    .GetChatClient(model?.ModelId ?? "qwen2.5-7b")
+    .GetChatClient(model?.ModelId ?? alias)
+    .AsIChatClient()
+    .AsBuilder()
+    .UseLogging(loggerFactory)
+    .Build()
     .CreateAIAgent(
         instructions: "You are a helpful assistant who responds in French.",
         tools: [messageAgent.AsAIFunction()]);
 
-Console.WriteLine(await agent.RunAsync("Find out what is the weather is like in Sydney and send it via sms to (123) 234-3456?"));
+
+Console.WriteLine(await agent.RunAsync("Find out what is the weather is like in Sydney and send it via sms to (123) 234-3456?", options: runOptions));
 
 [Description("Get the weather for a given location.")]
 static string GetWeather([Description("The location to get the weather for.")] string location)
@@ -67,7 +95,7 @@ static string GetWeather([Description("The location to get the weather for.")] s
     var apiKey = configuration["WeatherApi:ApiKey"];
     if (string.IsNullOrEmpty(apiKey))
     {
-        return "Error: Weather API key not configured";
+        return "Error: Weather API key not configured.";
     }
     
     var baseUrl = configuration["WeatherApi:BaseUrl"] ?? "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline";

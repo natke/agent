@@ -10,6 +10,8 @@ It uses the OpenAI Client instread of the AzureOpenAIClient. This is because the
 
 2. Install Foundry Local (version > 0.8.96)
 
+3. Sign up to Visual Crossing weather API as documented below
+
 ## Run
 
 1. dotnet run
