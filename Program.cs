@@ -77,11 +77,11 @@ AIAgent agent = new OpenAIClient(
     .UseLogging(loggerFactory)
     .Build()
     .CreateAIAgent(
-        instructions: "You are a helpful assistant who responds in French.",
-        tools: [messageAgent.AsAIFunction()]);
+        instructions: "You are a helpful assistant who responds in French with some tools.",
+        tools: [AIFunctionFactory.Create(SendSms), AIFunctionFactory.Create(GetWeather)]);
 
 
-Console.WriteLine(await agent.RunAsync("Find out what is the weather is like in Sydney and send it via sms to (123) 234-3456?", options: runOptions));
+Console.WriteLine(await agent.RunAsync("Find out what the weather is like in Sydney and send it via sms to (123) 234-3456?", options: runOptions));
 
 [Description("Get the weather for a given location.")]
 static string GetWeather([Description("The location to get the weather for.")] string location)

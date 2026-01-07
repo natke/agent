@@ -4,3 +4,7 @@ obj
 
 # Configuration files with API keys
 appsettings.json
+appsettings.sample.json
+
+agentlog.txt
+
