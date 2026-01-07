@@ -14,7 +14,30 @@ It uses the OpenAI Client instread of the AzureOpenAIClient. This is because the
 
 ## Run
 
-1. dotnet run
+- Default run:
+
+```bash
+dotnet run --project .
+```
+
+- Default prompt:
+
+```bash
+Find out what the weather is like in Sydney and send it via sms to (123) 234-3456. Respond in French
+```
+
+- Custom prompt:
+
+```bash
+dotnet run --project . -- --prompt "Translate hello to French"
+dotnet run --project . -- -p "What's the weather in Tokyo?"
+```
+
+- Help:
+
+```bash
+dotnet run --project . -- --help
+```
 
 ## Configuration
 

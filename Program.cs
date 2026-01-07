@@ -30,6 +30,9 @@ ChatClientAgentRunOptions runOptions = new()
     ChatOptions = options
 };
 
+var defaultPrompt = "Find out what the weather is like in Sydney and send it via sms to (123) 234-3456. Respond in French";
+var prompt = GetPromptFromArgs(args) ?? defaultPrompt;
+
 Console.WriteLine("Starting model...");
 
 var manager = await FoundryLocalManager.StartModelAsync(aliasOrModelId: alias);
@@ -40,7 +43,7 @@ IList<AITool> tools = [
     AIFunctionFactory.Create(SendSms),
     AIFunctionFactory.Create(GetWeather)];
 
-AIAgent weatherAgent = new OpenAIClient(
+AIAgent translationAgent = new OpenAIClient(
   new ApiKeyCredential(manager.ApiKey),
   new OpenAIClientOptions { Endpoint = manager.Endpoint })
     .GetChatClient(model?.ModelId ?? alias)
@@ -49,24 +52,9 @@ AIAgent weatherAgent = new OpenAIClient(
     .UseLogging(loggerFactory)
     .Build()
     .CreateAIAgent(
-        instructions: "You answer questions about the weather.",
-        name: "WeatherAgent",
-        description: "An agent that answers questions about the weather.",
-        tools: [AIFunctionFactory.Create(GetWeather)]);
-
-AIAgent messageAgent = new OpenAIClient(
-  new ApiKeyCredential(manager.ApiKey),
-  new OpenAIClientOptions { Endpoint = manager.Endpoint })
-    .GetChatClient(model?.ModelId ?? alias)
-    .AsIChatClient()
-    .AsBuilder()
-    .UseLogging(loggerFactory)
-    .Build()
-    .CreateAIAgent(
-        instructions: "You send text messages.",
-        name: "MessageAgent",
-        description: "An agent that sends messages.",
-        tools: [AIFunctionFactory.Create(SendSms), weatherAgent.AsAIFunction()]);
+        instructions: "You translate a message into French.",
+        name: "TranslationAgent",
+        description: "An agent that translates messages into French.");
 
 AIAgent agent = new OpenAIClient(
   new ApiKeyCredential(manager.ApiKey),
@@ -77,11 +65,70 @@ AIAgent agent = new OpenAIClient(
     .UseLogging(loggerFactory)
     .Build()
     .CreateAIAgent(
-        instructions: "You are a helpful assistant who responds in French with some tools.",
-        tools: [AIFunctionFactory.Create(SendSms), AIFunctionFactory.Create(GetWeather)]);
+        instructions: "You are a helpful assistant with some tools.",
+        tools: [AIFunctionFactory.Create(SendSms), AIFunctionFactory.Create(GetWeather), translationAgent.AsAIFunction()]);
 
 
-Console.WriteLine(await agent.RunAsync("Find out what the weather is like in Sydney and send it via sms to (123) 234-3456?", options: runOptions));
+Console.WriteLine(await agent.RunAsync(prompt, options: runOptions));
+
+static void ShowUsage()
+{
+    Console.WriteLine("Usage: agent [--prompt|-p <text>] [--help|-h]");
+    Console.WriteLine("Options:");
+    Console.WriteLine("  --prompt, -p    Specify the input prompt text");
+    Console.WriteLine("  --help, -h      Show this help message and exit");
+}
+
+static string? GetPromptFromArgs(string[] args)
+{
+    if (args is null || args.Length == 0)
+    {
+        return null;
+    }
+
+    for (int i = 0; i < args.Length; i++)
+    {
+        var a = args[i];
+        if (a == "--help" || a == "-h")
+        {
+            ShowUsage();
+            Environment.Exit(0);
+        }
+        if (a == "--prompt" || a == "-p")
+        {
+            if (i + 1 < args.Length && !args[i + 1].StartsWith("-"))
+            {
+                return args[i + 1];
+            }
+            Console.Error.WriteLine("Error: Missing value for --prompt/-p.");
+            ShowUsage();
+            Environment.Exit(1);
+        }
+        if (a.StartsWith("--prompt="))
+        {
+            var val = a.Substring("--prompt=".Length);
+            if (string.IsNullOrEmpty(val))
+            {
+                Console.Error.WriteLine("Error: Missing value for --prompt.");
+                ShowUsage();
+                Environment.Exit(1);
+            }
+            return val;
+        }
+        if (a.StartsWith("-p="))
+        {
+            var val = a.Substring(3);
+            if (string.IsNullOrEmpty(val))
+            {
+                Console.Error.WriteLine("Error: Missing value for -p.");
+                ShowUsage();
+                Environment.Exit(1);
+            }
+            return val;
+        }
+    }
+    return null;
+}
 
 [Description("Get the weather for a given location.")]
 static string GetWeather([Description("The location to get the weather for.")] string location)
