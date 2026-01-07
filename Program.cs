@@ -7,6 +7,7 @@ using Microsoft.Agents.AI;
 using Microsoft.AI.Foundry.Local;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using OpenAI.Realtime;
 
 // Load configuration
 var configuration = new ConfigurationBuilder()
@@ -16,7 +17,7 @@ var configuration = new ConfigurationBuilder()
 
 // Create logger factory for agent logging
 using var loggerFactory = LoggerFactory.Create(builder =>
-    builder.AddConsole().SetMinimumLevel(LogLevel.Trace));
+    builder.AddConsole().SetMinimumLevel(LogLevel.Error));
 
 var alias = "qwen2.5-7b";
 
@@ -33,7 +34,19 @@ ChatClientAgentRunOptions runOptions = new()
 var defaultPrompt = "Find out what the weather is like in Sydney and send it via sms to (123) 234-3456. Respond in French";
 var prompt = GetPromptFromArgs(args) ?? defaultPrompt;
 
-Console.WriteLine("Starting model...");
+Console.ForegroundColor = ConsoleColor.DarkGray;
+Console.Write("Running agent with prompt:");
+Console.ResetColor();
+Console.ForegroundColor = ConsoleColor.Blue;
+Console.WriteLine(prompt);
+Console.ResetColor();
+
+Console.ForegroundColor = ConsoleColor.DarkGray;
+Console.Write("Starting model: ");
+Console.ResetColor();
+Console.ForegroundColor = ConsoleColor.Blue;
+Console.WriteLine(alias);
+Console.ResetColor();
 
 var manager = await FoundryLocalManager.StartModelAsync(aliasOrModelId: alias);
 var model = await manager.GetModelInfoAsync(aliasOrModelId: alias);
@@ -69,7 +82,13 @@ AIAgent agent = new OpenAIClient(
         tools: [AIFunctionFactory.Create(SendSms), AIFunctionFactory.Create(GetWeather), translationAgent.AsAIFunction()]);
 
 
-Console.WriteLine(await agent.RunAsync(prompt, options: runOptions));
+var response = await agent.RunAsync(prompt, options: runOptions);
+Console.ForegroundColor = ConsoleColor.DarkGray;
+Console.Write("Agent output:");
+Console.ResetColor();
+Console.ForegroundColor = ConsoleColor.Blue;
+Console.WriteLine(response.AsChatResponse().Messages[^1]);
+Console.ResetColor();
 
 static void ShowUsage()
 {
