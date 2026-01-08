@@ -8,7 +8,7 @@ It uses the OpenAI Client instread of the AzureOpenAIClient. This is because the
 
 1. Clone this repo
 
-2. Install Foundry Local (version > 0.8.96)
+2. Install Foundry Local (version > 0.8.117)
 
 3. Sign up to Visual Crossing weather API as documented below
 
