@@ -71,7 +71,7 @@ Never commit `appsettings.json` with real API keys to version control. Use `apps
 
 ## Output
 
-The current sample will output the tool call along with the final output e.g.
+The current sample will output the following:
 
 ```bash
 Model started              qwen2.5-7b
