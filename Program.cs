@@ -34,31 +34,11 @@ ChatClientAgentRunOptions runOptions = new()
 var defaultPrompt = "Find out what the weather is like in Sydney and send it via sms to (123) 234-3456. Respond in French";
 var prompt = GetPromptFromArgs(args) ?? defaultPrompt;
 
-Console.ForegroundColor = ConsoleColor.DarkGray;
-Console.Write("Model starting");
-Console.ResetColor();
-var animationCursorLeft = Console.CursorLeft;
-var animationCursorTop = Console.CursorTop;
-Console.ForegroundColor = ConsoleColor.Blue;
-Console.SetCursorPosition(27, animationCursorTop);
-Console.Write(alias);
-Console.ResetColor();
-
-using var cts = new CancellationTokenSource();
-var animationTask = AnimateModelStarting(animationCursorTop, animationCursorLeft, cts.Token);
-var manager = await FoundryLocalManager.StartModelAsync(aliasOrModelId: alias);
-cts.Cancel();
-await animationTask;
-
-// Replace "Model starting..." with "Model started"
-Console.SetCursorPosition(0, animationCursorTop);
-Console.ForegroundColor = ConsoleColor.DarkGray;
-Console.Write("Model started".PadRight(27));
-Console.ResetColor();
-Console.ForegroundColor = ConsoleColor.Blue;
-Console.Write(alias);
-Console.ResetColor();
-Console.WriteLine();
+var manager = await RunWithAnimationAsync(
+    "Model starting",
+    "Model started",
+    alias,
+    () => FoundryLocalManager.StartModelAsync(aliasOrModelId: alias));
 
 var model = await manager.GetModelInfoAsync(aliasOrModelId: alias);
 
@@ -92,31 +72,53 @@ AIAgent agent = new OpenAIClient(
         instructions: "You are a helpful assistant with some tools.",
         tools: [AIFunctionFactory.Create(SendSms), AIFunctionFactory.Create(GetWeather), translationAgent.AsAIFunction()]);
 
-// Show "Prompting agent" with animation, then prompt value
-Console.ForegroundColor = ConsoleColor.DarkGray;
-Console.Write("Agent running");
-Console.ResetColor();
-var agentAnimationCursorLeft = Console.CursorLeft;
-var agentAnimationCursorTop = Console.CursorTop;
-Console.ForegroundColor = ConsoleColor.Blue;
-Console.SetCursorPosition(27, agentAnimationCursorTop);
-Console.Write(prompt);
-Console.ResetColor();
-
-using var agentCts = new CancellationTokenSource();
-var agentAnimationTask = AnimateModelStarting(agentAnimationCursorTop, agentAnimationCursorLeft, agentCts.Token);
-var response = await agent.RunAsync(prompt, options: runOptions);
-agentCts.Cancel();
-await agentAnimationTask;
-
-// Clear the dots and move to next line
-Console.SetCursorPosition(agentAnimationCursorLeft, agentAnimationCursorTop);
-Console.Write(new string(' ', 27 - agentAnimationCursorLeft));
-Console.WriteLine();
+var response = await RunWithAnimationAsync(
+    "Agent running",
+    null,
+    prompt,
+    () => agent.RunAsync(prompt, options: runOptions));
 
 WriteConsoleOutput("Agent output", response.AsChatResponse().Messages[^1].ToString());
 
-static async Task AnimateModelStarting(int cursorTop, int cursorLeft, CancellationToken cancellationToken)
+static async Task<T> RunWithAnimationAsync<T>(string startLabel, string? completedLabel, string value, Func<Task<T>> taskFunc)
+{
+    Console.ForegroundColor = ConsoleColor.DarkGray;
+    Console.Write(startLabel);
+    Console.ResetColor();
+    var animationCursorLeft = Console.CursorLeft;
+    var animationCursorTop = Console.CursorTop;
+    Console.ForegroundColor = ConsoleColor.Blue;
+    Console.SetCursorPosition(27, animationCursorTop);
+    Console.Write(value);
+    Console.ResetColor();
+
+    using var cts = new CancellationTokenSource();
+    var animationTask = AnimateDotsAsync(animationCursorTop, animationCursorLeft, cts.Token);
+    var result = await taskFunc();
+    cts.Cancel();
+    await animationTask;
+
+    // Clear the dots
+    Console.SetCursorPosition(animationCursorLeft, animationCursorTop);
+    Console.Write(new string(' ', 27 - animationCursorLeft));
+
+    if (completedLabel != null)
+    {
+        // Replace with completed label
+        Console.SetCursorPosition(0, animationCursorTop);
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.Write(completedLabel.PadRight(27));
+        Console.ResetColor();
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.Write(value);
+        Console.ResetColor();
+    }
+    Console.WriteLine();
+
+    return result;
+}
+
+static async Task AnimateDotsAsync(int cursorTop, int cursorLeft, CancellationToken cancellationToken)
 {
     int dotCount = 0;
     try
