@@ -35,20 +35,31 @@ var defaultPrompt = "Find out what the weather is like in Sydney and send it via
 var prompt = GetPromptFromArgs(args) ?? defaultPrompt;
 
 Console.ForegroundColor = ConsoleColor.DarkGray;
-Console.Write("Running agent with prompt:");
+Console.Write("Model starting");
 Console.ResetColor();
+var animationCursorLeft = Console.CursorLeft;
+var animationCursorTop = Console.CursorTop;
 Console.ForegroundColor = ConsoleColor.Blue;
-Console.WriteLine(prompt);
+Console.SetCursorPosition(27, animationCursorTop);
+Console.Write(alias);
 Console.ResetColor();
 
-Console.ForegroundColor = ConsoleColor.DarkGray;
-Console.Write("Starting model: ");
-Console.ResetColor();
-Console.ForegroundColor = ConsoleColor.Blue;
-Console.WriteLine(alias);
-Console.ResetColor();
-
+using var cts = new CancellationTokenSource();
+var animationTask = AnimateModelStarting(animationCursorTop, animationCursorLeft, cts.Token);
 var manager = await FoundryLocalManager.StartModelAsync(aliasOrModelId: alias);
+cts.Cancel();
+await animationTask;
+
+// Replace "Model starting..." with "Model started"
+Console.SetCursorPosition(0, animationCursorTop);
+Console.ForegroundColor = ConsoleColor.DarkGray;
+Console.Write("Model started".PadRight(27));
+Console.ResetColor();
+Console.ForegroundColor = ConsoleColor.Blue;
+Console.Write(alias);
+Console.ResetColor();
+Console.WriteLine();
+
 var model = await manager.GetModelInfoAsync(aliasOrModelId: alias);
 
 IList<AITool> tools = [
@@ -81,14 +92,62 @@ AIAgent agent = new OpenAIClient(
         instructions: "You are a helpful assistant with some tools.",
         tools: [AIFunctionFactory.Create(SendSms), AIFunctionFactory.Create(GetWeather), translationAgent.AsAIFunction()]);
 
-
-var response = await agent.RunAsync(prompt, options: runOptions);
+// Show "Prompting agent" with animation, then prompt value
 Console.ForegroundColor = ConsoleColor.DarkGray;
-Console.Write("Agent output:");
+Console.Write("Agent running");
 Console.ResetColor();
+var agentAnimationCursorLeft = Console.CursorLeft;
+var agentAnimationCursorTop = Console.CursorTop;
 Console.ForegroundColor = ConsoleColor.Blue;
-Console.WriteLine(response.AsChatResponse().Messages[^1]);
+Console.SetCursorPosition(27, agentAnimationCursorTop);
+Console.Write(prompt);
 Console.ResetColor();
+
+using var agentCts = new CancellationTokenSource();
+var agentAnimationTask = AnimateModelStarting(agentAnimationCursorTop, agentAnimationCursorLeft, agentCts.Token);
+var response = await agent.RunAsync(prompt, options: runOptions);
+agentCts.Cancel();
+await agentAnimationTask;
+
+// Clear the dots and move to next line
+Console.SetCursorPosition(agentAnimationCursorLeft, agentAnimationCursorTop);
+Console.Write(new string(' ', 27 - agentAnimationCursorLeft));
+Console.WriteLine();
+
+WriteConsoleOutput("Agent output", response.AsChatResponse().Messages[^1].ToString());
+
+static async Task AnimateModelStarting(int cursorTop, int cursorLeft, CancellationToken cancellationToken)
+{
+    int dotCount = 0;
+    try
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            dotCount = (dotCount % 3) + 1;
+            await Task.Delay(500, cancellationToken);
+            Console.SetCursorPosition(cursorLeft, cursorTop);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write(new string('.', dotCount));
+            Console.Write(new string(' ', 3 - dotCount));
+            Console.ResetColor();
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        // Animation cancelled, which is expected
+    }
+}
+
+static void WriteConsoleOutput(string label, string value)
+{
+    const int labelWidth = 27; // Width of longest label "Running agent with prompt:"
+    Console.ForegroundColor = ConsoleColor.DarkGray;
+    Console.Write(label.PadRight(labelWidth));
+    Console.ResetColor();
+    Console.ForegroundColor = ConsoleColor.Blue;
+    Console.WriteLine(value);
+    Console.ResetColor();
+}
 
 static void ShowUsage()
 {
